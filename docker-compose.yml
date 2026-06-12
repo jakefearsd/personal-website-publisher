@@ -184,8 +184,14 @@ services:
 
 volumes:
   authoring_search_data:
+    name: crafter_authoring_data_search
   authoring_search_logs:
+    name: crafter_authoring_logs_search
   authoring_crafter_data:
+    name: crafter_authoring_data
   authoring_crafter_logs:
+    name: crafter_authoring_logs
   authoring_crafter_temp:
+    name: crafter_authoring_temp
   authoring_grapes_data:
+    name: crafter_authoring_grapes
