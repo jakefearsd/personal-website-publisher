@@ -1,0 +1,191 @@
+services:
+  search:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: crafter-search
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - DISABLE_SECURITY_PLUGIN=true
+      - ES_JAVA_OPTS=-Xss1024K -Xmx1G
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./search-data:/usr/share/opensearch/data
+      - ./search-logs:/usr/share/opensearch/logs
+    depends_on:
+      search-init:
+        condition: service_completed_successfully
+
+  search-init:
+    image: alpine:latest
+    container_name: crafter-search-init
+    command: chown -R 1000:1000 /usr/share/opensearch/data /usr/share/opensearch/logs
+    volumes:
+      - ./search-data:/usr/share/opensearch/data
+      - ./search-logs:/usr/share/opensearch/logs
+
+  crafter-deployer:
+    image: craftercms/deployer:latest
+    container_name: crafter-deployer
+    restart: unless-stopped
+    depends_on:
+      - search
+    environment:
+      - CRAFTER_ENVIRONMENT=prod
+      - TOMCAT_HOST=crafter-delivery
+      - TOMCAT_HTTP_PORT=8080
+      - ES_HOST=search
+      - ES_PORT=9200
+      - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
+    volumes:
+      - ./crafter-data:/opt/crafter/data
+
+  crafter-delivery:
+    image: craftercms/delivery_tomcat:latest
+    container_name: crafter-delivery
+    restart: unless-stopped
+    depends_on:
+      - search
+      - crafter-deployer
+    environment:
+      - CRAFTER_ENVIRONMENT=prod
+      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=jakefear
+      - ES_HOST=search
+      - ES_PORT=9200
+      - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
+    volumes:
+      - ./crafter-data:/opt/crafter/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=jakefear"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  crafter-delivery-green:
+    image: craftercms/delivery_tomcat:latest
+    container_name: crafter-delivery-green
+    restart: unless-stopped
+    depends_on:
+      - search
+      - crafter-deployer
+    environment:
+      - CRAFTER_ENVIRONMENT=prod
+      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=jakefear
+      - ES_HOST=search
+      - ES_PORT=9200
+      - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
+    volumes:
+      - ./crafter-data:/opt/crafter/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=jakefear"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  proxy:
+    image: nginx:alpine
+    container_name: crafter-proxy
+    restart: unless-stopped
+    depends_on:
+      - crafter-delivery
+    ports:
+      - "8082:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Authoring Stack
+  authoring-search:
+    image: opensearchproject/opensearch:3.6.0
+    container_name: authoring-search-1
+    restart: unless-stopped
+    ports:
+      - 9202:9200
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "DISABLE_SECURITY_PLUGIN=true"
+      - "ES_JAVA_OPTS=-Xss1024K -Xmx1G"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - authoring_search_data:/usr/share/opensearch/data
+      - authoring_search_logs:/usr/share/opensearch/logs
+    depends_on:
+      authoring-search-init:
+        condition: service_completed_successfully
+
+  authoring-search-init:
+    image: alpine:latest
+    container_name: authoring-search-init
+    command: chown -R 1000:1000 /usr/share/opensearch/data /usr/share/opensearch/logs
+    volumes:
+      - authoring_search_data:/usr/share/opensearch/data
+      - authoring_search_logs:/usr/share/opensearch/logs
+
+  authoring-tomcat:
+    image: craftercms/authoring_tomcat:5.0.0-SNAPSHOT
+    container_name: authoring-tomcat-1
+    restart: unless-stopped
+    platform: linux/amd64
+    depends_on:
+      - authoring-search
+      - authoring-deployer
+    ports:
+      - 8084:8080
+    volumes:
+      - authoring_crafter_data:/opt/crafter/data
+      - authoring_crafter_logs:/opt/crafter/logs
+      - authoring_crafter_temp:/opt/crafter/temp
+      - authoring_grapes_data:/opt/crafter/bin/grapes
+      - authoring_search_data:/opt/crafter/data/indexes
+    environment:
+      - DEPLOYER_HOST=authoring-deployer
+      - DEPLOYER_PORT=9191
+      - ES_HOST=authoring-search
+      - ES_PORT=9200
+      - CRAFTER_ENGINE_GROOVY_SANDBOX_ENABLE=false
+      - CRAFTER_SECURITY_PREVIEW_ENABLED=false
+      - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
+      - TOMCAT_HTTP_PORT=8080
+      - TOMCAT_HTTPS_PORT=8443
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/studio/login"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  authoring-deployer:
+    image: craftercms/deployer:5.0.0-SNAPSHOT
+    container_name: authoring-deployer-1
+    restart: unless-stopped
+    platform: linux/amd64
+    depends_on:
+      - authoring-search
+    ports:
+      - 9192:9191
+    volumes:
+      - authoring_crafter_data:/opt/crafter/data
+      - authoring_crafter_logs:/opt/crafter/logs
+      - authoring_crafter_temp:/opt/crafter/temp
+      - authoring_grapes_data:/opt/crafter/bin/grapes
+    environment:
+      - TOMCAT_HOST=authoring-tomcat
+      - TOMCAT_HTTP_PORT=8080
+      - ES_HOST=authoring-search
+      - ES_PORT=9200
+      - CRAFTER_ENGINE_GROOVY_SANDBOX_ENABLE=false
+      - CRAFTER_SECURITY_PREVIEW_ENABLED=false
+      - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
+
+volumes:
+  authoring_search_data:
+  authoring_search_logs:
+  authoring_crafter_data:
+  authoring_crafter_logs:
+  authoring_crafter_temp:
+  authoring_grapes_data:

@@ -1,0 +1,8 @@
+# Ignore CrafterCMS data directories
+crafter-data/
+search-data/
+search-logs/
+
+# Ignore local environment/OS files
+.DS_Store
+*.log
