@@ -52,14 +52,14 @@ services:
       - crafter-deployer
     environment:
       - CRAFTER_ENVIRONMENT=prod
-      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=jakefear
+      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=personal-site
       - ES_HOST=search
       - ES_PORT=9200
       - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
     volumes:
       - ./crafter-data:/opt/crafter/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=jakefear"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=personal-site"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,14 +73,14 @@ services:
       - crafter-deployer
     environment:
       - CRAFTER_ENVIRONMENT=prod
-      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=jakefear
+      - CRAFTER_ENGINE_SITE_DEFAULT_NAME=personal-site
       - ES_HOST=search
       - ES_PORT=9200
       - CRAFTER_ENGINE_GROOVY_GRAPES_DOWNLOAD_ENABLED=false
     volumes:
       - ./crafter-data:/opt/crafter/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=jakefear"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/?crafterSite=personal-site"]
       interval: 10s
       timeout: 5s
       retries: 5
