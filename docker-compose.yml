@@ -154,7 +154,7 @@ services:
       - TOMCAT_HTTP_PORT=8080
       - TOMCAT_HTTPS_PORT=8443
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/studio/login"]
+      test: ["CMD", "curl", "-f", "-L", "http://localhost:8080/studio/index.html"]
       interval: 10s
       timeout: 5s
       retries: 5
